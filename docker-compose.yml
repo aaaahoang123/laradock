@@ -55,6 +55,10 @@ volumes:
     driver: ${VOLUMES_DRIVER}
   react:
     driver: ${VOLUMES_DRIVER}
+  zeebe_data:
+    driver: ${VOLUMES_DRIVER}
+  zeebe_elasticsearch_data:
+    driver: ${VOLUMES_DRIVER}
 
 services:
 
@@ -379,6 +383,9 @@ services:
         - ${NGINX_HOST_LOG_PATH}:/var/log/nginx
         - ${NGINX_SITES_PATH}:/etc/nginx/sites-available
         - ${NGINX_SSL_PATH}:/etc/nginx/ssl
+        - ./data/certbot/certs/:/var/certs
+        - ./certbot/letsencrypt/:/var/www/letsencrypt
+        - /etc/localtime:/etc/localtime:ro
       ports:
         - "${NGINX_HOST_HTTP_PORT}:80"
         - "${NGINX_HOST_HTTPS_PORT}:443"
@@ -1000,8 +1007,8 @@ services:
         - ./data/certbot/certs/:/var/certs
         - ./certbot/letsencrypt/:/var/www/letsencrypt
       environment:
-        - CN="fake.domain.com"
-        - EMAIL="fake.email@gmail.com"
+        - CN=${CERTBOT_DOMAIN}
+        - EMAIL=${CERTBOT_EMAIL}
       networks:
         - frontend
 
@@ -1892,4 +1899,49 @@ services:
       volumes:
         - ./react:/usr/src/app/react
         - /usr/src/app/react/node_modules
+
+
+    zeebe:
+      image: camunda/zeebe:0.25.1
+      environment:
+        - ZEEBE_LOG_LEVEL=debug
+        - "ES_JAVA_OPTS=-XX:+UseSerialGC -Xss512k"
+      ports:
+        - "${ZEEBE_PORT}:26500"
+        - "${ZEEBE_MONITOR_PORT}:9600"
+      volumes:
+        - zeebe_data:/usr/local/zeebe/data
+        - ./zeebe/zeebe.yaml:/usr/local/zeebe/config/application.yaml
+        - /etc/localtime:/etc/localtime:ro
+      depends_on:
+        - elasticsearch
+      networks:
+        - backend
+
+    operate:
+      image: camunda/operate:0.25.0
+      ports:
+        - "${OPERATE_PORT}:8080"
+      depends_on:
+        - zeebe
+        - elasticsearch
+      volumes:
+        - ./zeebe/operate.yml:/usr/local/operate/config/application.yml
+        - /etc/localtime:/etc/localtime:ro
+      networks:
+        - backend
+
+    elasticsearch:
+      image: docker.elastic.co/elasticsearch/elasticsearch-oss:6.7.1
+      ports:
+        - "${ELASTICSEARCH_PORT}:9200"
+      environment:
+        - discovery.type=single-node
+        - cluster.name=elasticsearch
+        - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      volumes:
+        - zeebe_elasticsearch_data:/usr/share/elasticsearch/data
+        - /etc/localtime:/etc/localtime:ro
+      networks:
+        - backend
 

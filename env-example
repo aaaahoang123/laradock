@@ -963,3 +963,13 @@ GEARMAN_MYSQL_TABLE=gearman_queue
 
 ### ELK Stack ##################################################
 ELK_VERSION=7.9.1
+
+ZEEBE_PORT=26500
+ZEEBE_MONITOR_PORT=9600
+OPERATE_PORT=8083
+ELASTICSEARCH_PORT=9200
+
+CERTBOT_DOMAIN=ecaf.api.thanhphuong.xyz
+CERTBOT_EMAIL=hoangdo.2194@gmail.com
+
+APP_TZ=Asia/Singapore

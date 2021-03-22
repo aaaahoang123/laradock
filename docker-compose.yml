@@ -396,8 +396,12 @@ services:
       depends_on:
         - php-fpm
       networks:
-        - frontend
-        - backend
+        frontend:
+          aliases: 
+            - topcv.local
+        backend:
+          aliases:
+            - topcv.local
 
 ### Blackfire ########################################
     blackfire:

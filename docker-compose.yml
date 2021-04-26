@@ -412,7 +412,7 @@ services:
         - php-fpm
       networks:
         frontend:
-          aliases: 
+          aliases:
             - topcv.local
         backend:
           aliases:

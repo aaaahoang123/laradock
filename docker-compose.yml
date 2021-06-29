@@ -1971,37 +1971,6 @@ services:
         - ./react:/usr/src/app/react
         - /usr/src/app/react/node_modules
 
-
-    zeebe:
-      image: camunda/zeebe:0.25.1
-      environment:
-        - ZEEBE_LOG_LEVEL=debug
-        - "ES_JAVA_OPTS=-XX:+UseSerialGC -Xss512k"
-      ports:
-        - "${ZEEBE_PORT}:26500"
-        - "${ZEEBE_MONITOR_PORT}:9600"
-      volumes:
-        - zeebe_data:/usr/local/zeebe/data
-        - ./zeebe/zeebe.yaml:/usr/local/zeebe/config/application.yaml
-        - /etc/localtime:/etc/localtime:ro
-      depends_on:
-        - elasticsearch
-      networks:
-        - backend
-
-    operate:
-      image: camunda/operate:0.25.0
-      ports:
-        - "${OPERATE_PORT}:8080"
-      depends_on:
-        - zeebe
-        - elasticsearch
-      volumes:
-        - ./zeebe/operate.yml:/usr/local/operate/config/application.yml
-        - /etc/localtime:/etc/localtime:ro
-      networks:
-        - backend
-
 ### kafka ####################################################
     kafka:
       image: wurstmeister/kafka

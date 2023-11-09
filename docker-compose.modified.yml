@@ -1,0 +1,36 @@
+services:
+  nginx:
+    extends:
+      file: docker-compose.yml
+      service: nginx
+    networks:
+      frontend:
+        aliases:
+          - topcv.local
+          - account.ios.local
+      backend:
+        aliases:
+          - topcv.local
+          - account.ios.local
+          - employee.ios.local
+          - connect.ios.local
+          - customer.ios.local
+
+  elasticsearch:
+    extends:
+      service: elasticsearch
+      file: docker-compose.yml
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+
+  kibana:
+    extends:
+      service: kibana
+      file: docker-compose.yml
+    environment:
+      # - ELASTICSEARCH_HOSTS=["http://10.6.34.6:9200"]
+      - ELASTICSEARCH_HOSTS=["http://elasticsearch:9200"]
+      #         - ELASTICSEARCH_HOSTS=["http://10.14.34.69:9200"]
+      #         - ELASTICSEARCH_HOSTS=["http://192.168.2.22:9201"]
+      #         - ELASTICSEARCH_USERNAME=elastic
+      #         - ELASTICSEARCH_PASSWORD=TO4KH0U1330oKMQ8xfLUX166

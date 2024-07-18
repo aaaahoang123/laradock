@@ -15,6 +15,7 @@ services:
           - employee.ios.local
           - connect.ios.local
           - customer.ios.local
+          - order.local
 
   elasticsearch:
     extends:
@@ -164,3 +165,30 @@ services:
       - backend
     links:
       - docker-in-docker
+
+  vaultwarden:
+    image: vaultwarden/server:alpine
+    restart: always
+    volumes:
+      - ${BITWARDEN_LOG_PATH}:/log
+      - ${DATA_PATH_HOST}/bitwarden:/data
+    environment:
+      - DOMAIN=${BITWARDEN_DOMAIN}
+      - SMTP_HOST=${BITWARDEN_SMTP_HOST}
+      - SMTP_PORT=${BITWARDEN_SMTP_PORT}
+      - SMTP_FROM=${BITWARDEN_SMTP_FROM}
+      - SMTP_FROM_NAME=${BITWARDEN_SMTP_FROM_NAME}
+      - SMTP_USERNAME=${BITWARDEN_SMTP_USERNAME}
+      - SMTP_PASSWORD=${BITWARDEN_SMTP_PASSWORD}
+      - SMTP_SECURITY=${BITWARDEN_SMTP_SECURITY}
+      - SIGNUPS_ALLOWED=${BITWARDEN_SIGNUPS_ALLOWED}
+      - INVITATIONS_ALLOWED=${BITWARDEN_INVITATIONS_ALLOWED}
+      - ADMIN_TOKEN=${BITWARDEN_ADMIN_TOKEN}
+      - WEBSOCKET_ENABLED=${BITWARDEN_WEBSOCKET_ENABLED}
+      - DATABASE_URL=${BITWARDEN_DATABASE_URL}
+      - LOG_FILE=/log/bitwarden.log
+    depends_on:
+      - mariadb
+    networks:
+      - frontend
+      - backend

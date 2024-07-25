@@ -199,4 +199,5 @@ services:
       service: keycloak
       file: docker-compose.yml
     environment:
+      - KEYCLOAK_PRODUCTION=${KEYCLOAK_PRODUCTION}
       - KEYCLOAK_PROXY_HEADERS=${KEYCLOAK_PROXY_HEADERS-''}

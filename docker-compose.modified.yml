@@ -167,8 +167,8 @@ services:
     links:
       - docker-in-docker
 
-  vaultwarden:
-    image: vaultwarden/server:alpine
+  bitwarden:
+    image: vaultwarden/server:${BITWARDEN_VERSION}-alpine
     restart: always
     volumes:
       - ${BITWARDEN_LOG_PATH}:/log

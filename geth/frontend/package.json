@@ -1,0 +1,21 @@
+{
+  "name": "funix-bdp301x-assignment-2",
+  "version": "1.0.0",
+  "description": "A Web Interface to access and control a Ethereum node running on your local machine",
+  "main": "server.js",
+  "scripts": {
+    "start": "npm run test && node server.js",
+    "test": "mocha"
+  },
+  "dependencies": {
+    "body-parser": "^1.18.2",
+    "express": "^4.16.2",
+    "semver": "^7.3.5",
+    "web3": "^0.20.7",
+    "web3admin": "^0.4.4"
+  },
+  "devDependencies": {
+    "mocha": "^9.2.2",
+    "mocha-suppress-logs": "^0.3.1"
+  }
+}

@@ -53,6 +53,11 @@ services:
     networks:
       - backend
       - frontend
+  geth:
+    build:
+      context: ./geth
+    ports:
+      - 8880:8080
 
   php-fpm-old:
     build:

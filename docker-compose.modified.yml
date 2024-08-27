@@ -17,6 +17,7 @@ services:
           - customer.ios.local
           - order.local
           - dktt.topcv.local
+          - job.topcv.local
 
   elasticsearch:
     extends:

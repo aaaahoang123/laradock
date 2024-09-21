@@ -1,8 +1,5 @@
 services:
   nginx:
-    extends:
-      file: docker-compose.yml
-      service: nginx
     networks:
       frontend:
         aliases:
@@ -18,20 +15,12 @@ services:
           - order.local
           - dktt.topcv.local
           - job.topcv.local
-    depends_on:
-      - php-fpm-old
 
   elasticsearch:
-    extends:
-      service: elasticsearch
-      file: docker-compose.yml
     volumes:
       - /etc/localtime:/etc/localtime:ro
 
   kibana:
-    extends:
-      service: kibana
-      file: docker-compose.yml
     environment:
       # - ELASTICSEARCH_HOSTS=["http://10.6.34.6:9200"]
       - ELASTICSEARCH_HOSTS=["http://elasticsearch:9200"]
@@ -94,9 +83,6 @@ services:
       - backend
 
   keycloak:
-    extends:
-      service: keycloak
-      file: docker-compose.yml
     environment:
       - KEYCLOAK_PRODUCTION=${KEYCLOAK_PRODUCTION}
       - KEYCLOAK_PROXY_HEADERS=${KEYCLOAK_PROXY_HEADERS-''}

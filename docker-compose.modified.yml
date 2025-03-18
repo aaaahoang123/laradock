@@ -15,6 +15,7 @@ services:
           - order.local
           - dktt.topcv.local
           - job.topcv.local
+          - employer.local
 
   elasticsearch:
     volumes:
@@ -86,3 +87,23 @@ services:
     environment:
       - KEYCLOAK_PRODUCTION=${KEYCLOAK_PRODUCTION}
       - KEYCLOAK_PROXY_HEADERS=${KEYCLOAK_PROXY_HEADERS-''}
+
+  mongo:
+    command: mongod --replSet rs0 --dbpath /data/db --port 27017
+    volumes:
+      - ${DATA_PATH_HOST}/mongo:/data/db
+      - ${DATA_PATH_HOST}/mongo_config:/data/configdb
+      - ./mongo/scripts:/scripts
+    depends_on:
+      - mongo-replica
+
+  mongo-replica:
+    command: mongod --replSet rs0 --dbpath /data/db --port 27018
+    extends:
+      service: mongo
+      file: ./docker-compose.yml
+    ports: !override
+      - "27018:27018"
+    volumes:
+      - ${DATA_PATH_HOST}/mongo-replica:/data/db
+      - ${DATA_PATH_HOST}/mongo_config:/data/configdb

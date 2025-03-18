@@ -142,7 +142,7 @@ services:
       - backend
     volumes:
       - ${MATTERMOST_CONFIG_PATH}:/mattermost/config:rw
-      - ${DATA_PATH_HOST}/mattermost:/mattermost/data:rw
+      - ${MATTERMOST_DATA_PATH}:/mattermost/data:rw
       - ${MATTERMOST_LOGS_PATH}:/mattermost/logs:rw
       - ${MATTERMOST_PLUGINS_PATH}:/mattermost/plugins:rw
       - ${MATTERMOST_CLIENT_PLUGINS_PATH}:/mattermost/client/plugins:rw

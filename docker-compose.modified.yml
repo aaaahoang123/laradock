@@ -138,6 +138,8 @@ services:
     read_only: ${MATTERMOST_CONTAINER_READONLY}
     tmpfs:
       - /tmp
+    networks:
+      - backend
     volumes:
       - ${MATTERMOST_CONFIG_PATH}:/mattermost/config:rw
       - ${DATA_PATH_HOST}/mattermost:/mattermost/data:rw

@@ -1,3 +1,7 @@
+volumes:
+  n8n:
+    driver: ${VOLUMES_DRIVER}
+
 services:
   nginx:
     networks:
@@ -164,3 +168,33 @@ services:
 
       # additional settings
       - MM_SERVICESETTINGS_SITEURL
+
+  n8n:
+    image: n8nio/n8n:latest
+    restart: always
+    ports:
+      - ${N8N_PORT}:5678
+    environment:
+      - N8N_HOST=${N8N_HOST}
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=${N8N_PROTOCOL}
+      - N8N_RUNNERS_ENABLED=true
+      - N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true
+      - NODE_ENV=production
+      - WEBHOOK_URL=${N8N_WEBHOOK_URL}
+      - GENERIC_TIMEZONE=${APP_TZ}
+      - VUE_APP_URL_BASE_API=${N8N_VUE_APP_URL_BASE_API}
+      - WEBHOOK_TUNNEL_URL=${N8N_WEBHOOK_TUNNEL_URL}
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=postgres
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_DATABASE=${N8N_POSTGRES_DB}
+      - DB_POSTGRESDB_USER=${N8N_POSTGRES_USER}
+      - DB_POSTGRESDB_PASSWORD=${N8N_POSTGRES_PASSWORD}
+    volumes:
+      - n8n:/home/node/.n8n
+    depends_on:
+      - postgres
+    networks:
+      - backend
+

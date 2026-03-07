@@ -63,6 +63,8 @@ RUN set -xe; \
     if [ $(php -r "echo PHP_MAJOR_VERSION;") = "8" ] && [ $(php -r "echo PHP_MINOR_VERSION;") != "0" ]; then \
       groupmod --new-name laradock ubuntu; \
       usermod --login laradock ubuntu --move-home --home /home/laradock; \
+      groupmod -g ${PGID} laradock; \
+      usermod -u ${PUID} -g ${PGID} laradock; \
     else \
       groupadd -g ${PGID} laradock; \
       useradd -l -u ${PUID} -g laradock -m laradock -G docker_env; \

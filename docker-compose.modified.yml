@@ -3,24 +3,10 @@ volumes:
     driver: ${VOLUMES_DRIVER}
 
 services:
-  nginx:
-    networks:
-      frontend:
-        aliases:
-          - topcv.local
-          - account.ios.local
-      backend:
-        aliases:
-          - topcv.local
-          - account.ios.local
-          - employee.ios.local
-          - connect.ios.local
-          - customer.ios.local
-          - order.local
-          - dktt.topcv.local
-          - job.topcv.local
-          - employer.local
-
+  postgres:
+    volumes: !override
+      - ${DATA_PATH_HOST}/postgres:/var/lib/postgresql/${POSTGRES_CLIENT_VERSION}/data
+      - ${POSTGRES_ENTRYPOINT_INITDB}:/docker-entrypoint-initdb.d
   elasticsearch:
     volumes:
       - /etc/localtime:/etc/localtime:ro

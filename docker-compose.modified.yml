@@ -20,32 +20,6 @@ services:
       #         - ELASTICSEARCH_USERNAME=elastic
       #         - ELASTICSEARCH_PASSWORD=TO4KH0U1330oKMQ8xfLUX166
 
-  kpi-service:
-    build:
-      context: ../codes/topcv/main/kpi
-      dockerfile: Dockerfile-dev
-      args:
-        - PUID=${WORKSPACE_PUID}
-        - PGID=${WORKSPACE_PGID}
-        - NODE_VERSION=${WORKSPACE_NODE_VERSION}
-    volumes:
-      - ../codes/topcv/main/kpi:${APP_CODE_PATH_CONTAINER}${APP_CODE_CONTAINER_FLAG}
-    ports:
-      - 8123:8000
-    entrypoint: "php artisan octane:frankenphp --watch"
-    networks:
-      - backend
-      - frontend
-
-  php-fpm-old:
-    extends:
-      file: docker-compose.yml
-      service: php-fpm
-    build:
-      context: ./php-fpm
-      args:
-        - LARADOCK_PHP_VERSION=${PHP_OLD_VERSION}
-
   bitwarden:
     image: vaultwarden/server:${BITWARDEN_VERSION}-alpine
     restart: always
@@ -121,11 +95,11 @@ services:
     depends_on:
       - postgres
     image: mattermost/${MATTERMOST_IMAGE}:${MATTERMOST_IMAGE_TAG}
-    restart: ${MATTERMOST_RESTART_POLICY}
+    restart: unless-stopped
     security_opt:
       - no-new-privileges:true
     pids_limit: 200
-    read_only: ${MATTERMOST_CONTAINER_READONLY}
+    read_only: true
     tmpfs:
       - /tmp
     networks:
@@ -154,33 +128,3 @@ services:
 
       # additional settings
       - MM_SERVICESETTINGS_SITEURL
-
-  n8n:
-    image: n8nio/n8n:latest
-    restart: always
-    ports:
-      - ${N8N_PORT}:5678
-    environment:
-      - N8N_HOST=${N8N_HOST}
-      - N8N_PORT=5678
-      - N8N_PROTOCOL=${N8N_PROTOCOL}
-      - N8N_RUNNERS_ENABLED=true
-      - N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true
-      - NODE_ENV=production
-      - WEBHOOK_URL=${N8N_WEBHOOK_URL}
-      - GENERIC_TIMEZONE=${APP_TZ}
-      - VUE_APP_URL_BASE_API=${N8N_VUE_APP_URL_BASE_API}
-      - WEBHOOK_TUNNEL_URL=${N8N_WEBHOOK_TUNNEL_URL}
-      - DB_TYPE=postgresdb
-      - DB_POSTGRESDB_HOST=postgres
-      - DB_POSTGRESDB_PORT=5432
-      - DB_POSTGRESDB_DATABASE=${N8N_POSTGRES_DB}
-      - DB_POSTGRESDB_USER=${N8N_POSTGRES_USER}
-      - DB_POSTGRESDB_PASSWORD=${N8N_POSTGRES_PASSWORD}
-    volumes:
-      - n8n:/home/node/.n8n
-    depends_on:
-      - postgres
-    networks:
-      - backend
-

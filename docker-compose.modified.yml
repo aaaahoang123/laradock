@@ -98,6 +98,8 @@ services:
     environment:
       - TABBY_AUTH_TOKEN=${TABBY_GATEWAY_AUTH_TOKEN}
     restart: always
+    networks:
+      - backend
 
   mattermost:
     depends_on:

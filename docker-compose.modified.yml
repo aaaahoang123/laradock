@@ -89,7 +89,15 @@ services:
       - SOCIAL_AUTH_GOOGLE_OAUTH2_KEY=${TABBY_SOCIAL_AUTH_GOOGLE_OAUTH2_KEY}
       - SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET=${TABBY_SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET}
       - DOCKERIZE_ARGS="-wait tcp://db:3306 -timeout 60s"
+      - SOCIAL_AUTH_REDIRECT_IS_HTTPS=True
     # - APP_DIST_STORAGE="file:///app-dist"
+
+  tabby-gateway:
+    image: ghcr.io/eugeny/tabby-connection-gateway:master
+    command: --token-auth --host 0.0.0.0 --port 9000
+    environment:
+      - TABBY_AUTH_TOKEN=${TABBY_GATEWAY_AUTH_TOKEN}
+    restart: always
 
   mattermost:
     depends_on:

@@ -14,7 +14,7 @@ services:
       - ${POSTGRES_ENTRYPOINT_INITDB}:/docker-entrypoint-init
 
   forgejo:
-    image: codeberg.org/forgejo/forgejo:11
+    image: codeberg.org/forgejo/forgejo:15
     container_name: forgejo
     environment:
       - USER_UID=${FORGEJO_USER_UID:-1000}

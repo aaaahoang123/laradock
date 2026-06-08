@@ -6,7 +6,39 @@ services:
   postgres:
     volumes: !override
       - ${DATA_PATH_HOST}/postgres:/var/lib/postgresql/${POSTGRES_CLIENT_VERSION}/data
-      - ${POSTGRES_ENTRYPOINT_INITDB}:/docker-entrypoint-initdb.d
+      - ${POSTGRES_ENTRYPOINT_INITDB}:/docker-entrypoint-init
+
+  forgejo:
+    image: codeberg.org/forgejo/forgejo:11
+    container_name: forgejo
+    environment:
+      - USER_UID=${FORGEJO_USER_UID:-1000}
+      - USER_GID=${FORGEJO_USER_GID:-1000}
+      - FORGEJO__database__DB_TYPE=${FORGEJO_DB_TYPE}
+      - FORGEJO__database__HOST=${FORGEJO_DB_HOST}:${FORGEJO_DB_PORT}
+      - FORGEJO__database__NAME=${FORGEJO_DB}
+      - FORGEJO__database__USER=${FORGEJO_DB_USER}
+      - FORGEJO__database__PASSWD=${FORGEJO_DB_PASSWORD}
+      # サーバー設定（ベースURL等） - デフォルト値を192.168.0.131に修正
+      - FORGEJO__server__DOMAIN=${FORGEJO_DOMAIN:-192.168.0.131}
+      - FORGEJO__server__HTTP_PORT=${FORGEJO_HTTP_PORT:-3000}
+      - FORGEJO__server__ROOT_URL=${FORGEJO_ROOT_URL:-http://192.168.0.131:3000/}
+      - FORGEJO__server__DISABLE_SSH=${FORGEJO_DISABLE_SSH:-false}
+      - FORGEJO__server__SSH_PORT=${FORGEJO_SSH_PORT:-222}
+      # Actions設定
+      - FORGEJO__actions__ENABLED=${FORGEJO_ACTIONS_ENABLE}
+      - FORGEJO__actions__DEFAULT_ACTIONS_URL=https://github.com
+    restart: always
+    networks:
+      - backend
+      - frontend
+    volumes:
+      - ${DATA_PATH_HOST}/forgejo:/data
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    depends_on:
+      - postgres
+
   elasticsearch:
     volumes:
       - /etc/localtime:/etc/localtime:ro

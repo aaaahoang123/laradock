@@ -4,6 +4,11 @@ volumes:
 
 services:
   postgres:
+    environment:
+      - FORGEJO_POSTGRES_INIT=${FORGEJO_POSTGRES_INIT}
+      - FORGEJO_POSTGRES_USER=${FORGEJO_DB_USER}
+      - FORGEJO_POSTGRES_PASSWORD=${FORGEJO_DB_PASSWORD}
+      - FORGEJO_POSTGRES_DB=${FORGEJO_DB}
     volumes: !override
       - ${DATA_PATH_HOST}/postgres:/var/lib/postgresql/${POSTGRES_CLIENT_VERSION}/data
       - ${POSTGRES_ENTRYPOINT_INITDB}:/docker-entrypoint-init

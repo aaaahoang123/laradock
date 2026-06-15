@@ -301,9 +301,12 @@ ARG INSTALL_DOCKER=false
 ARG DOCKER_HOST_SOCKET_GID=999
 RUN if [ "${INSTALL_DOCKER}" = "true" ]; then \
     apk add --no-cache docker-cli; \
-    delgroup docker 2>/dev/null || true; \
-    addgroup -g "${DOCKER_HOST_SOCKET_GID}" docker; \
-    addgroup laradock docker; \
+    SOCK_GROUP=$(awk -F: -v gid="${DOCKER_HOST_SOCKET_GID}" '$3==gid{print $1}' /etc/group); \
+    if [ -z "$SOCK_GROUP" ]; then \
+      addgroup -g "${DOCKER_HOST_SOCKET_GID}" docker-host; \
+      SOCK_GROUP=docker-host; \
+    fi; \
+    addgroup laradock "$SOCK_GROUP"; \
   fi
 
 #--------------------------------------------------------------------------

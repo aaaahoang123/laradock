@@ -298,8 +298,11 @@ RUN if [ ${INSTALL_MEMCACHED} = true ]; then \
 fi
 
 ARG INSTALL_DOCKER=false
+ARG DOCKER_HOST_SOCKET_GID=999
 RUN if [ ${INSTALL_DOCKER} = true ]; then \
   apk add --no-cache docker-cli \
+  && addgroup -g ${DOCKER_HOST_SOCKET_GID} docker 2>/dev/null || true \
+  && addgroup laradock docker \
 ;fi
 
 #--------------------------------------------------------------------------

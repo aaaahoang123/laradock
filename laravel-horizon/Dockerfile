@@ -297,6 +297,11 @@ RUN if [ ${INSTALL_MEMCACHED} = true ]; then \
   php -m | grep -r 'memcached'; \
 fi
 
+ARG INSTALL_DOCKER=false
+RUN if [ ${INSTALL_DOCKER} = true ]; then \
+    add --no-cache docker-cli \
+fi
+
 #--------------------------------------------------------------------------
 # Clean up
 #--------------------------------------------------------------------------

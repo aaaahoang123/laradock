@@ -41,6 +41,37 @@ RUN if [ "$LARADOCK_PHP_VERSION" = "7.1" ] || [ ${LARADOCK_PHP_VERSION} = "7.2" 
       /etc/apt/sources.list; \
 fi
 
+# PHP 7.4 uses an EOL Debian Bullseye base. Pinning a snapshot keeps package
+# metadata and binaries consistent instead of following removed moving repositories.
+RUN if [ "${LARADOCK_PHP_VERSION}" = "7.4" ]; then \
+    printf '%s\n' \
+      'deb [check-valid-until=no] https://snapshot.debian.org/archive/debian/20260831T000000Z/ bullseye main' \
+      'deb [check-valid-until=no] https://snapshot.debian.org/archive/debian/20260831T000000Z/ bullseye-updates main' \
+      'deb [check-valid-until=no] https://snapshot.debian.org/archive/debian-security/20260831T000000Z/ bullseye-security main' \
+      > /etc/apt/sources.list && \
+    rm -rf /var/lib/apt/lists/* && \
+    apt-get clean && \
+    apt-get -o Acquire::Check-Valid-Until=false update; \
+fi
+
+# pecl.php.net downloads intermittently truncate on CI (Fastly/HTTP flakiness), breaking
+# `pecl install` with "unable to unpack". Wrap pecl once so every install retries after clearing
+# the partial-download cache; all pecl call sites below become resilient with no other changes.
+RUN PECL_BIN="$(command -v pecl)"; \
+    mv "$PECL_BIN" "${PECL_BIN}.real"; \
+    printf '%s\n' \
+      '#!/bin/sh' \
+      'i=1' \
+      'while :; do' \
+      "  \"${PECL_BIN}.real\" \"\$@\" && exit 0" \
+      '  [ "$i" -ge 5 ] && exit 1' \
+      '  echo "pecl: attempt $i failed, clearing cache and retrying..." >&2' \
+      '  rm -rf /tmp/pear/download/* /tmp/pear/temp/* 2>/dev/null || true' \
+      '  i=$((i+1)); sleep 3' \
+      'done' \
+      > "$PECL_BIN"; \
+    chmod +x "$PECL_BIN"
+
 # always run apt update when start and after add new source list, then clean up at end.
 RUN set -xe; \
     apt-get update -yqq && \
@@ -139,6 +170,7 @@ ARG INSTALL_SSH2=false
 RUN if [ ${INSTALL_SSH2} = true ]; then \
     # Install the ssh2 extension
     apt-get -y install libssh2-1-dev && \
+    pecl channel-update pecl.php.net && \
     if [ $(php -r "echo PHP_MAJOR_VERSION;") = "5" ]; then \
         pecl install -a ssh2-0.13; \
     else \
@@ -380,21 +412,25 @@ RUN if [ ${INSTALL_MONGO} = true ]; then \
     else \
       if [ $(php -r "echo PHP_MAJOR_VERSION;") = "7" ]; then \
         if [ $(php -r "echo PHP_MINOR_VERSION;") = "0" ] || [ $(php -r "echo PHP_MINOR_VERSION;") = "1" ]; then \
-          pecl install mongodb-1.9.2; \
+          MONGO_VERSION=1.9.2; \
         else \
           if [ $(php -r "echo PHP_MINOR_VERSION;") = "4" ]; then \
-            pecl install mongodb-1.20.1; \
+            MONGO_VERSION=1.20.1; \
           else \
-            pecl install mongodb-1.16.2; \
+            MONGO_VERSION=1.16.2; \
           fi; \
         fi; \
       else \
         if [ $(php -r "echo PHP_MAJOR_VERSION;") = "8" ] && [ $(php -r "echo PHP_MINOR_VERSION;") = "0" ]; then \
-            pecl install mongodb-1.20.1; \
+            MONGO_VERSION=1.20.1; \
         else \
-            pecl install mongodb; \
+            MONGO_VERSION=1.21.0; \
         fi; \
       fi; \
+      # pecl.php.net HTTP/2 is flaky on CI and its own downloader truncates; fetch over HTTP/1.1 with curl retries, then install the local file
+      curl -fSL --http1.1 --retry 5 --retry-delay 2 --retry-all-errors -o /tmp/mongodb.tgz "https://pecl.php.net/get/mongodb-${MONGO_VERSION}.tgz" && \
+      pecl install /tmp/mongodb.tgz && \
+      rm -f /tmp/mongodb.tgz; \
       docker-php-ext-enable mongodb; \
       php -m | grep -oiE '^mongodb$'; \
     fi; \
@@ -689,8 +725,11 @@ ARG INSTALL_IONCUBE=false
 RUN if [ ${INSTALL_IONCUBE} = true ]; then \
     if [ ${LARADOCK_PHP_VERSION} != "8.5" ] \
       && [ ${LARADOCK_PHP_VERSION} != "8.0" ]; then \
-      # Install the php ioncube loader
-      curl -L -o /tmp/ioncube_loaders_lin_x86-64.tar.gz https://downloads.ioncube.com/loader_downloads/ioncube_loaders_lin_x86-64.tar.gz \
+      # Verify the vendor's TLS certificate and pinned SHA-256 before installing.
+      # The hash detects unexpected changes to the vendor's mutable archive.
+      # Update the pin only after authenticating a replacement archive.
+      curl -fSL --http1.1 --retry 5 --retry-delay 2 --retry-all-errors -o /tmp/ioncube_loaders_lin_x86-64.tar.gz https://downloads.ioncube.com/loader_downloads/ioncube_loaders_lin_x86-64.tar.gz \
+      && echo "739962bd012e77ee82bf01f77a9641f050e4be057f0a5d1a95fe59ce11fd62ba  /tmp/ioncube_loaders_lin_x86-64.tar.gz" | sha256sum -c - \
       && tar zxpf /tmp/ioncube_loaders_lin_x86-64.tar.gz -C /tmp \
       && mv /tmp/ioncube/ioncube_loader_lin_${LARADOCK_PHP_VERSION}.so $(php -r "echo ini_get('extension_dir');")/ioncube_loader.so \
       && printf "zend_extension=ioncube_loader.so\n" > $PHP_INI_DIR/conf.d/0ioncube.ini \
@@ -705,13 +744,14 @@ RUN if [ ${INSTALL_IONCUBE} = true ]; then \
 
 ARG INSTALL_OPCACHE=false
 
-# opcache can no-op/error during docker-php-ext-install on current PHP 8.5 preview images.
-# Fall back to enabling it and don't hard-fail so the preview build stays unblocked; 8.1-8.4 install normally.
+# OPcache ships compiled into the base image on all current PHP versions (statically
+# on 8.5, as a shared module on 8.1-8.4), so only build it on the rare image where it
+# is genuinely missing. This skips the redundant rebuild that errored on PHP 8.5.
 RUN if [ ${INSTALL_OPCACHE} = true ]; then \
-    docker-php-ext-install opcache || docker-php-ext-enable opcache || true \
+    php -r 'exit(extension_loaded("Zend OPcache") ? 0 : 1);' || docker-php-ext-install opcache \
 ;fi
 
-# Copy opcache configration
+# Copy opcache configuration
 COPY ./opcache.ini /usr/local/etc/php/conf.d/opcache.ini
 
 ###########################################################################
@@ -1254,8 +1294,8 @@ ARG NEW_RELIC=${NEW_RELIC}
 ARG NEW_RELIC_KEY=${NEW_RELIC_KEY}
 ARG NEW_RELIC_APP_NAME=${NEW_RELIC_APP_NAME}
 
-RUN if [ ${NEW_RELIC} = true ] ]; then \
-  curl -L http://download.newrelic.com/php_agent/archive/10.15.0.4/newrelic-php5-10.15.0.4-linux.tar.gz | tar -C /tmp -zx && \
+RUN if [ ${NEW_RELIC} = true ]; then \
+  curl -fsSL --proto '=https' --proto-redir '=https' -o /tmp/newrelic.tar.gz https://download.newrelic.com/php_agent/archive/10.15.0.4/newrelic-php5-10.15.0.4-linux.tar.gz && echo '34376c0fcae9c125b28d29091609765447ed951b5eab18ba7ec8666030318e97  /tmp/newrelic.tar.gz' | sha256sum -c - && tar -C /tmp -zxf /tmp/newrelic.tar.gz && rm /tmp/newrelic.tar.gz && \
   export NR_INSTALL_USE_CP_NOT_LN=1 && \
   export NR_INSTALL_SILENT=1 && \
   /tmp/newrelic-php5-*/newrelic-install install && \
@@ -1361,7 +1401,7 @@ RUN set -eux; \
       make install &&\
       rm /tmp/libevent.tar.gz &&\
       docker-php-ext-install sockets  &&\
-      curl -L -o /tmp/event.tar.gz http://pecl.php.net/get/event-3.0.6.tgz &&\
+      curl -fsSL --proto '=https' --proto-redir '=https' -o /tmp/event.tar.gz https://pecl.php.net/get/event-3.0.6.tgz && echo '04de37c3274f40109595adbd6283ea29256285264290b00880365bf8235079cc  /tmp/event.tar.gz' | sha256sum -c - &&\
       mkdir -p /tmp/event-php &&\
       tar -C /tmp/event-php -zxvf /tmp/event.tar.gz --strip 1 &&\
       cd /tmp/event-php &&\
@@ -1370,7 +1410,7 @@ RUN set -eux; \
       make &&\
       make install &&\
       rm /tmp/event.tar.gz &&\
-      docker-php-ext-enable event &&\
+      docker-php-ext-enable --ini-name zz-event.ini event &&\
       php -m  | grep -q 'event' \
 ;fi
 

@@ -1,5 +1,6 @@
 name: CI
 
+
 on:
   push:
     branches: '**'
@@ -11,10 +12,25 @@ on:
   schedule:
     - cron: '0 0 * * 0'
 
+
+
 permissions:
   contents: read # to fetch code (actions/checkout)
 
+
 jobs:
+  compose-validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Validate the full compose configuration (include + env_file wiring)
+        run: |
+          set -eux
+          docker compose version
+          cp .env.example .env
+          docker compose config -q
+
+
   build-php:
     # Don't trigger on schedule event when in a fork
     if: github.event_name != 'schedule' || (github.event_name == 'schedule' && github.repository == 'laradock/laradock')
@@ -25,14 +41,16 @@ jobs:
         php_version: [ "8.1", "8.2", "8.3", "8.4" ]
         service: [ php-fpm, php-worker, workspace ]
     steps:
-      - uses: actions/checkout@v6
-      - uses: docker/setup-buildx-action@v3
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
       - name: Build the Docker image
         env:
           PHP_VERSION: ${{ matrix.php_version }}
         run: |
           set -eux
           cp .env.example .env
+          # bake reads only the root .env, not the per-service defaults.env
+          cat ${{ matrix.service }}/defaults.env >> .env
           sed -i -- 's/=false/=true/g' .env
           sed -i -- 's/CHANGE_SOURCE=true/CHANGE_SOURCE=false/g' .env
           sed -i -- 's/PHPDBG=true/PHPDBG=false/g' .env
@@ -53,7 +71,9 @@ jobs:
           sed -i -- 's/SWOOLE=true/SWOOLE=false/g' .env
           sed -i -- 's/PHPDECIMAL=true/PHPDECIMAL=false/g' .env
           sed -i -- 's/IMAP=true/IMAP=false/g' .env
+          sed -i -- 's/NEW_RELIC=true/NEW_RELIC=false/g' .env
           docker buildx bake ${{ matrix.service }} --progress=plain --set *.output=type=cacheonly
+
 
   build-other:
     # Don't trigger on schedule event when in a fork
@@ -62,13 +82,17 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        service: [ 'nginx', 'redis', 'mysql', 'mariadb', 'percona', 'minio', 'mongo' ]
+        service: [ 'nginx', 'redis', 'mysql', 'mariadb', 'percona', 'minio', 'mongo', 'apache2' ]
     steps:
-      - uses: actions/checkout@v6
-      - uses: docker/setup-buildx-action@v3
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
       - name: Build the Docker image
         run: |
           cp .env.example .env
+          # bake reads only the root .env, not the per-service defaults.env
+          cat ${{ matrix.service }}/defaults.env >> .env
           sed -i -- 's/=false/=true/g' .env
           sed -i -- 's/CHANGE_SOURCE=true/CHANGE_SOURCE=false/g' .env
+          sed -i -- 's/APACHE_FOR_MAC_M1=true/APACHE_FOR_MAC_M1=false/g' .env
           docker buildx bake ${{ matrix.service }} --progress=plain --set *.output=type=cacheonly
+
